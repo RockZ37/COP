@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("member") // member, leader, pastor, admin
+  memberId      String?   // Link to Member if this user is a member
+
+  // Password reset fields
+  resetToken    String?
+  resetTokenExpiry DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Member model
+model Member {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  phone         String?
+  address       String?
+  dateOfBirth   DateTime?
+  joinDate      DateTime  @default(now())
+  isActive      Boolean   @default(true)
+  role          String    @default("member") // member, leader, pastor, admin
+
+  // Relationships
+  attendances   Attendance[]
+  donations     Donation[]
+  events        EventAttendee[]
+  groups        GroupMember[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Service/Event model
+model Event {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime?
+  location      String?
+  type          String    // service, meeting, outreach, etc.
+  isRecurring   Boolean   @default(false)
+  recurringPattern String?
+
+  // Relationships
+  attendees     EventAttendee[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Event Attendee join table
+model EventAttendee {
+  id            String    @id @default(cuid())
+  eventId       String
+  memberId      String
+  status        String    @default("confirmed") // confirmed, pending, cancelled
+
+  // Relationships
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([eventId, memberId])
+}
+
+// Attendance model
+model Attendance {
+  id            String    @id @default(cuid())
+  date          DateTime
+  serviceType   String    // sunday, midweek, etc.
+
+  // Relationships
+  memberId      String
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([memberId, date, serviceType])
+}
+
+// Donation/Tithe model
+model Donation {
+  id            String    @id @default(cuid())
+  amount        Float
+  date          DateTime
+  type          String    // tithe, offering, special
+  notes         String?
+
+  // Relationships
+  memberId      String?
+  member        Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Group model (for ministries, departments, etc.)
+model Group {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  type          String    // ministry, department, committee, etc.
+
+  // Relationships
+  members       GroupMember[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Group Member join table
+model GroupMember {
+  id            String    @id @default(cuid())
+  groupId       String
+  memberId      String
+  role          String    @default("member") // member, leader, etc.
+
+  // Relationships
+  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([groupId, memberId])
+}
+
+// Announcement model
+model Announcement {
+  id            String    @id @default(cuid())
+  title         String
+  content       String
+  startDate     DateTime
+  endDate       DateTime?
+  isPublished   Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
